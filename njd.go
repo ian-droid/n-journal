@@ -1,6 +1,8 @@
 // References:
 // * https://github.com/denji/golang-tls
 // * http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
+// * https://www.alexedwards.net/blog/serving-static-sites-with-go
+
 
 package main
 
@@ -22,6 +24,9 @@ func HelloServer(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+    fs := http.FileServer(http.Dir("static"))
+    http.Handle("/", fs)
+
     http.HandleFunc("/hello", HelloServer)
 
     caCert, err := ioutil.ReadFile("ca.crt")
