@@ -1,8 +1,10 @@
-// References:
-// * https://github.com/denji/golang-tls
-// * http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
-// * https://www.alexedwards.net/blog/serving-static-sites-with-go
-
+/*
+References:
+* https://github.com/denji/golang-tls
+* http://www.bite-code.com/2015/06/25/tls-mutual-auth-in-golang/
+* https://www.alexedwards.net/blog/serving-static-sites-with-go
+* https://legacy.gitbook.com/book/astaxie/build-web-application-with-golang/details
+*/
 
 package main
 
@@ -14,20 +16,16 @@ import (
     "crypto/x509"
     "net/http"
     "log"
+    "./journaldb"
 )
 
-func HelloServer(w http.ResponseWriter, req *http.Request) {
-    w.Header().Set("Content-Type", "text/plain")
-    w.Write([]byte("This is an example server.\n"))
-    // fmt.Fprintf(w, "This is an example server.\n")
-    // io.WriteString(w, "This is an example server.\n")
-}
 
 func main() {
+    banks := &journaldb.Banks{DBConn: journaldb.Open("ian_journal.db")}
+
     fs := http.FileServer(http.Dir("static"))
     http.Handle("/", fs)
-
-    http.HandleFunc("/hello", HelloServer)
+    http.HandleFunc("/banks/list", banks.List)
 
     caCert, err := ioutil.ReadFile("ca.crt")
     if err != nil {
@@ -55,4 +53,5 @@ func main() {
     }
 
     server.ListenAndServeTLS("server.crt", "server.key")
+
 }
