@@ -9,23 +9,76 @@ References:
 package main
 
 import (
-    // "fmt"
+    "fmt"
+    "strings"
     //"io"
     "io/ioutil"
     "crypto/tls"
     "crypto/x509"
     "net/http"
+    "database/sql"
+    "html/template"
     "log"
     "./journaldb"
 )
 
 
+type DiaryForm struct {
+    DBConn *sql.DB
+    Diary []journaldb.Diary
+}
+
+func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
+    if r.Method == "POST" {
+        r.ParseForm()
+        nd := journaldb.Diary{}
+
+        if oid, ok := r.Form["oid"]; ok {
+          fmt.Sscanf(strings.Join(oid, ""),"%d", &nd.Oid)
+          fmt.Println("Update existing ")
+        } else {
+          nd.Oid = 0
+        }
+        nd.Date = strings.Join(r.Form["date"], "")
+        nd.Content = strings.Join(r.Form["content"], "")
+        if strings.Join(r.Form["highlighted"], "") == "on" {
+          nd.Highlighted = true
+        } else {
+          nd.Highlighted = false
+        }
+        nd.Save(diaryForm.DBConn)
+    }
+
+    rows, err := diaryForm.DBConn.Query("select oid, date, content, highlighted from diary order by date desc limit 7")
+    checkErr(err)
+    diaryForm.Diary = nil
+    var diary journaldb.Diary
+    for rows.Next() {
+      err = rows.Scan(&diary.Oid, &diary.Date, &diary.Content, &diary.Highlighted)
+      checkErr(err)
+      diaryForm.Diary = append(diaryForm.Diary, diary)
+    }
+
+    tmpl := template.Must(template.ParseFiles("diary.gtpl"))
+    tmpl.Execute(w, diaryForm)
+
+
+}
+
+func checkErr(err error) {
+    if err != nil {
+        panic(err)
+    }
+}
+
 func main() {
-    banks := &journaldb.Banks{DBConn: journaldb.Open("ian_journal.db")}
+    dbconn := journaldb.Open("ian_journal.db")
+    diaryForm := DiaryForm{DBConn: dbconn}
+//    banks := &journaldb.Banks{DBConn: dbconn}
 
     fs := http.FileServer(http.Dir("static"))
     http.Handle("/", fs)
-    http.HandleFunc("/banks/list", banks.List)
+    http.HandleFunc("/diary", diaryForm.Form)
 
     caCert, err := ioutil.ReadFile("ca.crt")
     if err != nil {

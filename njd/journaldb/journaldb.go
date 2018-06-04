@@ -20,6 +20,16 @@ type Payment struct {
 }
 */
 
+type Diary struct {
+    Oid int
+    Date string
+    Content string
+    Highlighted bool
+    Added int
+    Updated int
+}
+
+
 type Bank struct {
     Id int
     Name string
@@ -30,6 +40,21 @@ type Banks struct {
     DBConn *sql.DB
     Bank []Bank
 }
+
+func (diary Diary) Save (dbconn *sql.DB) {
+    if diary.Oid == 0 {
+      // INSERT
+      stmt, err := dbconn.Prepare("INSERT INTO diary(date, content, highlighted) values(?,?,?)")
+      checkErr(err)
+      res, err := stmt.Exec(diary.Date, diary.Content, diary.Highlighted)
+      checkErr(err)
+      id, err := res.LastInsertId()
+      checkErr(err)
+      fmt.Printf("New diary %d saved to database.\n", id)
+    }
+    // ToDo: Update
+}
+
 
 func (banks *Banks) List(w http.ResponseWriter, r *http.Request) {
     //conn, err := sql.Open("sqlite3", "ian_journal.db")
