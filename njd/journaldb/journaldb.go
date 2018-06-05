@@ -2,23 +2,11 @@ package journaldb
 
 import (
     "fmt"
-    "net/http"
     "database/sql"
     _ "github.com/mattn/go-sqlite3"
-    "encoding/json"
+    "github.com/shopspring/decimal"
+    //"encoding/json"
 )
-
-/*
-type Currency struct {
-    Id int
-    Prefix string
-}
-
-type Payment struct {
-    Id int
-    Name string
-}
-*/
 
 type Diary struct {
     Oid int
@@ -29,22 +17,10 @@ type Diary struct {
     Updated int
 }
 
-
-type Bank struct {
-    Id int
-    Name string
-    Desc string
-}
-
-type Banks struct {
-    DBConn *sql.DB
-    Bank []Bank
-}
-
 func (diary Diary) Save (dbconn *sql.DB) {
     if diary.Oid == 0 {
       // INSERT
-      stmt, err := dbconn.Prepare("INSERT INTO diary(date, content, highlighted) values(?,?,?)")
+      stmt, err := dbconn.Prepare("INSERT INTO diary(date, content, highlighted) VALUES(?,?,?)")
       checkErr(err)
       res, err := stmt.Exec(diary.Date, diary.Content, diary.Highlighted)
       checkErr(err)
@@ -56,26 +32,96 @@ func (diary Diary) Save (dbconn *sql.DB) {
 }
 
 
-func (banks *Banks) List(w http.ResponseWriter, r *http.Request) {
-    //conn, err := sql.Open("sqlite3", "ian_journal.db")
-    //checkErr(err)
-    rows, err := banks.DBConn.Query("select id, name, description from bank")
-    checkErr(err)
-    banks.Bank = nil
-    var bank Bank
-    for rows.Next() {
-      err = rows.Scan(&bank.Id, &bank.Name, &bank.Desc)
+type Transaction struct {
+    Oid int
+    Date string
+    Item string
+    Description string
+    Amount decimal.Decimal
+    Pay bool
+    Income bool
+    Direction string
+    Currency int
+    CurrencyName string
+    Payment int
+    PaymentName string
+    Bank int
+    BankName string
+    Added int
+    Updated int
+}
+
+func (transaction Transaction) Save (dbconn *sql.DB) {
+    if transaction.Oid == 0 {
+      // INSERT
+      stmt, err := dbconn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
       checkErr(err)
-      banks.Bank = append(banks.Bank, bank)
+      res, err := stmt.Exec(transaction.Date, transaction.Item, transaction.Description, transaction.Currency, transaction.Amount, transaction.Pay, transaction.Income, transaction.Payment, transaction.Bank)
+      checkErr(err)
+      id, err := res.LastInsertId()
+      checkErr(err)
+      fmt.Printf("New transaction %d saved to database.\n", id)
     }
+    // ToDo: Update
+}
 
-    j, err := json.Marshal(banks.Bank)
+type Currency struct {
+    Id int
+    Name string
+    Prefix string
+}
+
+func GetCurrencies (dbconn *sql.DB) []Currency {
+    rows, err := dbconn.Query("SELECT id, name, prefix from currency WHERE id <> 0")
     checkErr(err)
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    w.Write(j)
-    // fmt.Fprintf(w, "This is an example server.\n")
-    // io.WriteString(w, "This is an example server.\n")
+    var currencies []Currency
+    for rows.Next() {
+      var currency Currency
+      err = rows.Scan(&currency.Id, &currency.Name, &currency.Prefix)
+      checkErr(err)
+      currencies = append(currencies, currency)
+    }
+    return currencies
+}
 
+type Payment struct {
+    Id int
+    Name string
+    Desc string
+    Priority bool
+}
+
+func GetPayments (dbconn *sql.DB) []Payment {
+    rows, err := dbconn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0")
+    checkErr(err)
+    var payments []Payment
+    for rows.Next() {
+      var payment Payment
+      err = rows.Scan(&payment.Id, &payment.Name, &payment.Desc, &payment.Priority)
+      checkErr(err)
+      payments = append(payments, payment)
+    }
+    return payments
+}
+
+type Bank struct {
+    Id int
+    Name string
+    Desc string
+    Priority bool
+}
+
+func GetBanks (dbconn *sql.DB) []Bank {
+    rows, err := dbconn.Query("SELECT id, name, description, priority from bank WHERE active")
+    checkErr(err)
+    var banks []Bank
+    for rows.Next() {
+      var bank Bank
+      err = rows.Scan(&bank.Id, &bank.Name, &bank.Desc, &bank.Priority)
+      checkErr(err)
+      banks = append(banks, bank)
+    }
+    return banks
 }
 
 
