@@ -1,6 +1,11 @@
+iframe {width: 100%; height: 1000px;}
+
 table {border-collapse: collapse;}
+
 th,td {border-style: solid; border-width: 1px; padding: 5px;}
+th.date {width: 75px;}
 tr.highlighted {background-color: #ffff99;}
+
 input {margin: 5px;}
 
 textarea {width: 70%; height: 200px}

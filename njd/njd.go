@@ -110,7 +110,7 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
         nt.Save(transactionForm.DBConn)
     }
 
-    qStr := "SELECT * FROM vTransaction WHERE date >= '" + getDateByDays(-7) + "' ORDER BY date ASC"
+    qStr := "SELECT * FROM vTransaction WHERE date >= '" + getDateByDays(-5) + "' ORDER BY date ASC"
     rows, err := transactionForm.DBConn.Query(qStr)
     checkErr(err)
     transactionForm.Transaction = nil

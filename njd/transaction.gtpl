@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <title>Transactions</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script></script>
 </head>
 <body>
   <h2>Recent Transactions</h2>
   <table>
     <tr>
-      <th>Date</th><th>Item</th><th>Description</th><th>Direction</th>
+      <th class="date">Date</th><th>Item</th><th>Description</th><th>Direction</th>
       <th>Currency</th><th>Amount</th><th>Payment</th><th>Bank</th>
     </tr>
     {{range .Transaction}}

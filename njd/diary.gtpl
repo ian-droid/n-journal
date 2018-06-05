@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <title>Diary</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <script></script>
 </head>
 <body>
   <h2>Recent Activities</h2>
   <table>
-    <tr><th>Date</th><th>Content</th><th>Operation</th></tr>
+    <tr><th class="date">Date</th><th>Content</th><th>Operation</th></tr>
     {{range .Diary}}
       {{if .Highlighted}}
         <tr class="highlighted">

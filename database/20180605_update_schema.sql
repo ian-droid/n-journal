@@ -87,5 +87,5 @@ UPDATE payment SET priority = 1 WHERE id = 3;
 
 UPDATE currency SET prefix = "CN￥" WHERE id = 1;
 
-UPDATE bank SET name = "Balance", WHERE id = 0;
-UPDATE bank SET name = "ICBC借记", WHERE id = 1;
+UPDATE bank SET name = "Balance" WHERE id = 0;
+UPDATE bank SET name = "ICBC借记" WHERE id = 1;
