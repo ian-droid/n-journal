@@ -42,7 +42,7 @@ type Transaction struct {
     Income bool
     Direction string
     Currency int
-    CurrencyName string
+    CurrencyPrefix string
     Payment int
     PaymentName string
     Bank int

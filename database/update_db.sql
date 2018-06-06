@@ -1,3 +1,7 @@
+BEGIN;
+
+DROP VIEW vTransaction;
+
 CREATE VIEW vTransaction AS
     SELECT t.oid AS oid,
            t.date,
@@ -8,7 +12,7 @@ CREATE VIEW vTransaction AS
              WHEN t.income AND NOT t.pay THEN 'Income'
              ELSE 'TBD'
            END AS direction,
-           c.name AS currency,
+           c.prefix AS currency,
            t.amount,
            p.name AS payment,
            b.name AS bank
@@ -19,3 +23,5 @@ CREATE VIEW vTransaction AS
      WHERE t.currency = c.id AND
            t.payment = p.id AND
            t.bank = b.id;
+
+COMMIT;

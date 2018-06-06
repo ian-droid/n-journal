@@ -36,7 +36,10 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
         } else {
           nd.Oid = 0
         }
-        nd.Date = strings.Join(r.Form["date"], "")
+        if nd.Date = strings.Join(r.Form["date"], ""); nd.Date == "" {
+            nd.Date = getDateByDays(0)
+            fmt.Println("Using system date for diary, please make sure TZ is correct.")
+        }
         nd.Content = strings.Join(r.Form["content"], "")
         if strings.Join(r.Form["highlighted"], "") == "on" {
           nd.Highlighted = true
@@ -55,9 +58,11 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
     diaryForm.Diary = nil
     var diary journaldb.Diary
     for rows.Next() {
-      err = rows.Scan(&diary.Oid, &diary.Date, &diary.Content, &diary.Highlighted)
+      var date string
+      err = rows.Scan(&diary.Oid, &date, &diary.Content, &diary.Highlighted)
       checkErr(err)
-      diary.Date = strings.Split (diary.Date, "T")[0]
+      t, _ := time.Parse(time.RFC3339, date)
+      diary.Date = t.Format("2006-01-02")
       diaryForm.Diary = append(diaryForm.Diary, diary)
     }
 
@@ -89,7 +94,10 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
         } else {
           nt.Oid = 0
         }
-        nt.Date = strings.Join(r.Form["date"], "")
+        if nt.Date = strings.Join(r.Form["date"], ""); nt.Date == "" {
+            nt.Date = getDateByDays(0)
+            fmt.Println("Using system date for transaction, please make sure TZ is correct.")
+        }
         nt.Item = strings.Join(r.Form["item"], "")
         nt.Description = strings.Join(r.Form["description"], "")
         fmt.Sscanf(strings.Join(r.Form["currency"], ""),"%d", &nt.Currency)
@@ -116,9 +124,12 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
     transactionForm.Transaction = nil
     var transaction journaldb.Transaction
     for rows.Next() {
-      err = rows.Scan(&transaction.Oid, &transaction.Date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyName, &transaction.Amount, &transaction.PaymentName, &transaction.BankName)
+      var date,amount string
+      err = rows.Scan(&transaction.Oid, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
       checkErr(err)
-      transaction.Date = strings.Split (transaction.Date, "T")[0]
+      t, _ := time.Parse(time.RFC3339, date)
+      transaction.Date = t.Format("2006-01-02")
+      transaction.Amount, _ = decimal.NewFromString(amount)
       transactionForm.Transaction = append(transactionForm.Transaction, transaction)
     }
 

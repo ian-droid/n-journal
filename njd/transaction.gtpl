@@ -10,8 +10,8 @@
   <h2>Recent Transactions</h2>
   <table>
     <tr>
-      <th class="date">Date</th><th>Item</th><th>Description</th><th>Direction</th>
-      <th>Currency</th><th>Amount</th><th>Payment</th><th>Bank</th>
+      <th class="date">Date</th><th>Item</th><th>Description</th>
+      <th>Direction</th><th>Amount</th><th>Payment</th><th>Bank</th>
     </tr>
     {{range .Transaction}}
       <tr>
@@ -19,8 +19,7 @@
         <td>{{.Item}}</td>
         <td>{{.Description}}</td>
         <td>{{.Direction}}</td>
-        <td>{{.CurrencyName}}</td>
-        <td>{{.Amount}}</td>
+        <td>{{.CurrencyPrefix}}&nbsp;{{.Amount}}</td>
         <td>{{.PaymentName}}</td>
         <td>{{.BankName}}</td>
       </tr>
