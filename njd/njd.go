@@ -19,11 +19,13 @@ import (
 type DiaryForm struct {
     DBConn *sql.DB
     Mode string
+    Message string
     Diary []journaldb.Diary
+    Diary2Update journaldb.Diary
 }
 
 func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
-    diaryForm.Mode = "Insert"
+    diaryForm.Mode = "New"
 
     r.ParseForm()
 
@@ -32,7 +34,7 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 
         if oid, ok := r.Form["oid"]; ok {
           fmt.Sscanf(strings.Join(oid, ""),"%d", &nd.Oid)
-          fmt.Println("Update existing diary")
+          fmt.Printf("Update existing diary %d\n", nd.Oid)
         } else {
           nd.Oid = 0
         }
@@ -47,8 +49,12 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
           nd.Highlighted = false
         }
         nd.Save(diaryForm.DBConn)
-    } else {
+        diaryForm.Message = "Diary of " + strings.Join(r.Form["date"], "") + " saved."
+    }
+    if oid, ok := r.Form["Edit"]; r.Method == "GET" && ok {
         diaryForm.Mode = "Update"
+        fmt.Sscanf(strings.Join(oid, ""),"%d", &diaryForm.Diary2Update.Oid)
+        journaldb.GetDiary(diaryForm.DBConn, &diaryForm.Diary2Update)
     }
 
     qStr := "SELECT oid, date, content, highlighted FROM diary WHERE date >= '" + getDateByDays(-7) + "' ORDER BY date ASC"
@@ -68,6 +74,8 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 
     tmpl := template.Must(template.ParseFiles("diary.gtpl"))
     tmpl.Execute(w, diaryForm)
+    diaryForm.Diary2Update = journaldb.Diary{}
+    diaryForm.Message = ""
 }
 
 

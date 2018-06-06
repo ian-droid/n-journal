@@ -2,6 +2,7 @@ package journaldb
 
 import (
     "fmt"
+    "time"
     "database/sql"
     _ "github.com/mattn/go-sqlite3"
     "github.com/shopspring/decimal"
@@ -18,7 +19,15 @@ type Diary struct {
 }
 
 func (diary Diary) Save (dbconn *sql.DB) {
-    if diary.Oid == 0 {
+    if diary.Oid > 0 {
+      // Update
+      stmt, err := dbconn.Prepare("UPDATE diary set content = ?, highlighted = ?, updated = strftime('%s', 'now') WHERE oid = ? and date = ?")
+      checkErr(err)
+      _, err = stmt.Exec(diary.Content, diary.Highlighted, diary.Oid, diary.Date)
+      checkErr(err)
+      stmt.Close()
+      fmt.Printf("Diary %d updated.\n", diary.Oid)
+    } else {
       // INSERT
       stmt, err := dbconn.Prepare("INSERT INTO diary(date, content, highlighted) VALUES(?,?,?)")
       checkErr(err)
@@ -26,9 +35,23 @@ func (diary Diary) Save (dbconn *sql.DB) {
       checkErr(err)
       id, err := res.LastInsertId()
       checkErr(err)
+      stmt.Close()
       fmt.Printf("New diary %d saved to database.\n", id)
     }
-    // ToDo: Update
+}
+
+func GetDiary (dbconn *sql.DB, diary *Diary) {
+  var date string
+  //fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Oid)
+  rows, err := dbconn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
+  checkErr(err)
+  for rows.Next() {
+    err = rows.Scan(&date, &diary.Content, &diary.Highlighted)
+  }
+  t, _ := time.Parse(time.RFC3339, date)
+  diary.Date = t.Format("2006-01-02")
+  checkErr(err)
+  rows.Close()
 }
 
 
@@ -60,6 +83,7 @@ func (transaction Transaction) Save (dbconn *sql.DB) {
       checkErr(err)
       id, err := res.LastInsertId()
       checkErr(err)
+      stmt.Close()
       fmt.Printf("New transaction %d saved to database.\n", id)
     }
     // ToDo: Update
@@ -81,6 +105,7 @@ func GetCurrencies (dbconn *sql.DB) []Currency {
       checkErr(err)
       currencies = append(currencies, currency)
     }
+    rows.Close()
     return currencies
 }
 
@@ -101,6 +126,7 @@ func GetPayments (dbconn *sql.DB) []Payment {
       checkErr(err)
       payments = append(payments, payment)
     }
+    rows.Close()
     return payments
 }
 
@@ -121,6 +147,7 @@ func GetBanks (dbconn *sql.DB) []Bank {
       checkErr(err)
       banks = append(banks, bank)
     }
+    rows.Close()
     return banks
 }
 
