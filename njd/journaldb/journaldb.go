@@ -93,15 +93,16 @@ type Currency struct {
     Id int
     Name string
     Prefix string
+    Current bool
 }
 
 func GetCurrencies (dbconn *sql.DB) []Currency {
-    rows, err := dbconn.Query("SELECT id, name, prefix from currency WHERE id <> 0")
+    rows, err := dbconn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0")
     checkErr(err)
     var currencies []Currency
     for rows.Next() {
       var currency Currency
-      err = rows.Scan(&currency.Id, &currency.Name, &currency.Prefix)
+      err = rows.Scan(&currency.Id, &currency.Name, &currency.Prefix, &currency.Current)
       checkErr(err)
       currencies = append(currencies, currency)
     }

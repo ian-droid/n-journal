@@ -36,7 +36,7 @@
     <!--<label for="currency">Currency:</label>-->
     <select name="currency">
       {{range .Currency}}
-      <option value="{{.Id}}">{{.Prefix}}</option>
+      <option value="{{.Id}}" {{if .Current}}selected{{end}}>{{.Prefix}}</option>
       {{end}}
     </select>
     <!--<label for="amount">Amount:</label>-->
