@@ -19,6 +19,14 @@
         <td>{{.Date}}</td><td>{{.Content}}</td><td><a href="diary?Edit={{.Oid}}">Edit</a></td></tr>
     {{end}}
   </table>
+
+  <form action="diary" method="GET">
+    <label>From:</label><input type="date" name="s_date" value="{{.StartDate}}" />
+    <label>to:</label><input type="date" name="e_date" value="{{.EndDate}}"/>
+    <input type="submit" value="Query" />
+    <span>{{.RowCount}} records of {{.DayCount}} days.</span>
+  </form>
+
   {{if .Message}}<div id="Message">{{.Message}}</div>{{end}}
   <h2>{{.Mode}} Diary</h2>
   {{if .Diary2Update.Oid}}

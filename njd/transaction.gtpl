@@ -25,6 +25,14 @@
       </tr>
     {{end}}
   </table>
+
+  <form action="transaction" method="GET">
+    <label>From:</label><input type="date" name="s_date" value="{{.StartDate}}" />
+    <label>to:</label><input type="date" name="e_date" value="{{.EndDate}}"/>
+    <input type="submit" value="Query" />
+    <span>{{.RowCount}} records of {{.DayCount}} days.</span>
+  </form>
+
   <h2>New Transaction</h2>
   <form action="transaction" method="POST">
     <label for="date">Date:</label>
