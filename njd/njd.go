@@ -24,7 +24,7 @@ var (
 	serverKeyFile    = flag.String("key", "server.key", "TLS server key file.")
 	clientCaCertFile = flag.String("ca", "ca.crt", "TLS client CA cert file.")
 	svrAddress       = flag.String("address", "0.0.0.0", "Listening address, default: 0.0.0.0")
-	svrPort          = flag.String("port", "8080", "Listening port, default: 80.")
+	svrPort          = flag.String("port", "8086", "Listening port, default: 80.")
 )
 
 type DiaryForm struct {
@@ -71,13 +71,13 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 		} else {
 			nd.Highlighted = false
 		}
-		nd.Save(diaryForm.DBConn)
+		nd.Save()
 		diaryForm.Message = "Diary of " + strings.Join(r.Form["date"], "") + " saved."
 	}
 	if oid, ok := r.Form["Edit"]; r.Method == "GET" && ok {
 		diaryForm.Mode = "Update"
 		fmt.Sscanf(strings.Join(oid, ""), "%d", &diaryForm.Diary2Update.Oid)
-		journaldb.GetDiary(diaryForm.DBConn, &diaryForm.Diary2Update)
+		journaldb.GetDiary(&diaryForm.Diary2Update)
 	}
 
 	qStr := "SELECT oid, date, content, highlighted FROM diary WHERE date >= '" + diaryForm.StartDate + "' and date <= '" + diaryForm.EndDate + "' ORDER BY date ASC"
@@ -159,7 +159,7 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 		fmt.Sscanf(strings.Join(r.Form["payment"], ""), "%d", &nt.Payment)
 		fmt.Sscanf(strings.Join(r.Form["bank"], ""), "%d", &nt.Bank)
 
-		nt.Save(transactionForm.DBConn)
+		nt.Save()
 	}
 
 	qStr := "SELECT * FROM vTransaction WHERE date >= '" + transactionForm.StartDate + "' and date <= '" + transactionForm.EndDate + "' ORDER BY date ASC"
@@ -179,9 +179,9 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 		transactionForm.RowCount++
 	}
 
-	transactionForm.Currency = journaldb.GetCurrencies(transactionForm.DBConn)
-	transactionForm.Payment = journaldb.GetPayments(transactionForm.DBConn)
-	transactionForm.Bank = journaldb.GetBanks(transactionForm.DBConn)
+	transactionForm.Currency = journaldb.GetCurrencies()
+	transactionForm.Payment = journaldb.GetPayments()
+	transactionForm.Bank = journaldb.GetBanks()
 
 	tmpl := template.Must(template.ParseFiles("transaction.gtpl"))
 	tmpl.Execute(w, transactionForm)
@@ -238,11 +238,11 @@ func main() {
 	tlsConfig.BuildNameToCertificate()
 
 	server := &http.Server{
-		Addr:  addrStr,
+		Addr:      addrStr,
 		TLSConfig: tlsConfig,
 	}
 
-journaldb.SaveMessage(dbconn, fmt.Sprintf("Serving requests on https://%s/.", addrStr))
-server.ListenAndServeTLS(*serverCertFile, *serverKeyFile)
+	journaldb.SaveMessage(fmt.Sprintf("Serving requests on https://%s/.", addrStr))
+	server.ListenAndServeTLS(*serverCertFile, *serverKeyFile)
 
 }
