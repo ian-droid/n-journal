@@ -10,7 +10,7 @@
   <h2>Recent Activities</h2>
   <table>
     <tr><th class="date">Date</th><th>Content</th><th>Operation</th></tr>
-    {{range .Diary}}
+    {{range .Diaries}}
       {{if .Highlighted}}
         <tr class="highlighted">
       {{else}}

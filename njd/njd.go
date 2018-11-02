@@ -1,10 +1,9 @@
 package main
 
 import (
-	"./journaldb"
+	"./journal"
 	"crypto/tls"
 	"crypto/x509"
-	"database/sql"
 	"flag"
 	"fmt"
 	"github.com/shopspring/decimal"
@@ -28,11 +27,11 @@ var (
 )
 
 type DiaryForm struct {
-	DBConn       *sql.DB
+	JournalDB       *journal.DB
 	Mode         string
 	Message      string
-	Diary        []journaldb.Diary
-	Diary2Update journaldb.Diary
+	Diaries        []journal.Diary
+	Diary2Update journal.Diary
 	StartDate    string
 	EndDate      string
 	DayCount     int
@@ -53,7 +52,7 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 	diaryForm.DayCount = getDaysByDate(diaryForm.StartDate, diaryForm.EndDate)
 
 	if r.Method == "POST" {
-		nd := journaldb.Diary{}
+		nd := journal.Diary{}
 
 		if oid, ok := r.Form["oid"]; ok {
 			fmt.Sscanf(strings.Join(oid, ""), "%d", &nd.Oid)
@@ -77,39 +76,24 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 	if oid, ok := r.Form["Edit"]; r.Method == "GET" && ok {
 		diaryForm.Mode = "Update"
 		fmt.Sscanf(strings.Join(oid, ""), "%d", &diaryForm.Diary2Update.Oid)
-		journaldb.GetDiary(&diaryForm.Diary2Update)
+		journal.GetDiary(&diaryForm.Diary2Update)
 	}
 
-	qStr := "SELECT oid, date, content, highlighted FROM diary WHERE date >= '" + diaryForm.StartDate + "' and date <= '" + diaryForm.EndDate + "' ORDER BY date ASC"
-	//fmt.Println(qStr)
-	rows, err := diaryForm.DBConn.Query(qStr)
-	checkErr(err)
-	diaryForm.Diary = nil
-	diaryForm.RowCount = 0
-	var diary journaldb.Diary
-	for rows.Next() {
-		var date string
-		err = rows.Scan(&diary.Oid, &date, &diary.Content, &diary.Highlighted)
-		checkErr(err)
-		t, _ := time.Parse(time.RFC3339, date)
-		diary.Date = t.Format(dateFormatShort)
-		diaryForm.Diary = append(diaryForm.Diary, diary)
-		diaryForm.RowCount++
-	}
+	diaryForm.Diaries, diaryForm.RowCount = diaryForm.JournalDB.GetDiariesByDateRange(diaryForm.StartDate,diaryForm.EndDate)
 
 	tmpl := template.Must(template.ParseFiles("diary.gtpl"))
 	tmpl.Execute(w, diaryForm)
-	diaryForm.Diary2Update = journaldb.Diary{}
+	diaryForm.Diary2Update = journal.Diary{}
 	diaryForm.Message = ""
 }
 
 type TransactionForm struct {
-	DBConn      *sql.DB
+	JournalDB      *journal.DB
 	Mode        string
-	Transaction []journaldb.Transaction
-	Currency    []journaldb.Currency
-	Payment     []journaldb.Payment
-	Bank        []journaldb.Bank
+	Transactions []journal.Transaction
+	Currency    []journal.Currency
+	Payment     []journal.Payment
+	Bank        []journal.Bank
 	StartDate   string
 	EndDate     string
 	DayCount    int
@@ -130,7 +114,7 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 	transactionForm.DayCount = getDaysByDate(transactionForm.StartDate, transactionForm.EndDate)
 
 	if r.Method == "POST" {
-		nt := journaldb.Transaction{}
+		nt := journal.Transaction{}
 
 		if oid, ok := r.Form["oid"]; ok {
 			fmt.Sscanf(strings.Join(oid, ""), "%d", &nt.Oid)
@@ -162,26 +146,11 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 		nt.Save()
 	}
 
-	qStr := "SELECT * FROM vTransaction WHERE date >= '" + transactionForm.StartDate + "' and date <= '" + transactionForm.EndDate + "' ORDER BY date ASC"
-	rows, err := transactionForm.DBConn.Query(qStr)
-	checkErr(err)
-	transactionForm.Transaction = nil
-	transactionForm.RowCount = 0
-	var transaction journaldb.Transaction
-	for rows.Next() {
-		var date, amount string
-		err = rows.Scan(&transaction.Oid, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
-		checkErr(err)
-		t, _ := time.Parse(time.RFC3339, date)
-		transaction.Date = t.Format(dateFormatShort)
-		transaction.Amount, _ = decimal.NewFromString(amount)
-		transactionForm.Transaction = append(transactionForm.Transaction, transaction)
-		transactionForm.RowCount++
-	}
+	transactionForm.Transactions, transactionForm.RowCount = transactionForm.JournalDB.GetTransactionsByDateRange(transactionForm.StartDate,transactionForm.EndDate)
 
-	transactionForm.Currency = journaldb.GetCurrencies()
-	transactionForm.Payment = journaldb.GetPayments()
-	transactionForm.Bank = journaldb.GetBanks()
+	transactionForm.Currency = journal.GetCurrencies()
+	transactionForm.Payment = journal.GetPayments()
+	transactionForm.Bank = journal.GetBanks()
 
 	tmpl := template.Must(template.ParseFiles("transaction.gtpl"))
 	tmpl.Execute(w, transactionForm)
@@ -208,9 +177,9 @@ func main() {
 	flag.Parse()
 	var addrStr = *svrAddress + ":" + *svrPort
 
-	dbconn := journaldb.Open(*dbFile)
-	diaryForm := DiaryForm{DBConn: dbconn}
-	transactionForm := TransactionForm{DBConn: dbconn}
+	jdb := journal.OpenDB(*dbFile)
+	diaryForm := DiaryForm{JournalDB: jdb}
+	transactionForm := TransactionForm{JournalDB: jdb}
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
@@ -242,7 +211,7 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
-	journaldb.SaveMessage(fmt.Sprintf("Serving requests on https://%s/.", addrStr))
+	journal.SaveMessage(fmt.Sprintf("Serving requests on https://%s/.", addrStr))
 	server.ListenAndServeTLS(*serverCertFile, *serverKeyFile)
 
 }

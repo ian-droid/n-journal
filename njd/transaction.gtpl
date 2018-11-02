@@ -13,7 +13,7 @@
       <th class="date">Date</th><th>Item</th><th>Description</th>
       <th>Direction</th><th>Amount</th><th>Payment</th><th>Bank</th>
     </tr>
-    {{range .Transaction}}
+    {{range .Transactions}}
       <tr>
         <td>{{.Date}}</td>
         <td>{{.Item}}</td>
