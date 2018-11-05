@@ -11,35 +11,55 @@ import (
 
 const dateFormatShort = "2006-01-02"
 
-var db DB
+func checkErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 type DB struct {
-	DSN string
-	Conn *sql.DB //dbconn in use
+	DBType string
+	DSN  string
+	conn *sql.DB //dbconn in use
 }
 
-func OpenDB (dsn string) *DB {
+func (db *DB)Open() {
 	var err error
-	db = DB{DSN:dsn}
-	db.Conn, err = sql.Open("sqlite3", dsn)
+	db.conn, err = sql.Open(db.DBType, db.DSN)
 	checkErr(err)
-	SaveMessage(fmt.Sprintf("Dateabase '%s' opened for journaling.", dsn))
-	return &db
+	db.SaveMessage(fmt.Sprintf("%s dateabase '%s' opened for journaling.",db.DBType, db.DSN))
 }
 
-func CloseDB() {
-	SaveMessage("Closing dateabase .")
-	err := db.Conn.Close()
+func  (db DB) CloseDB() {
+	db.SaveMessage("Closing dateabase .")
+	err := db.conn.Close()
 	checkErr(err)
+}
+
+func  (db DB) SaveMessage(msg string) {
+	now := time.Now()
+	fullMsg := fmt.Sprintf("%s: %s", now.Format(time.UnixDate), msg)
+	stmt, err := db.conn.Prepare("INSERT INTO message(added, content) VALUES(strftime('%s', 'now') ,?)")
+	checkErr(err)
+	_, err = stmt.Exec(fullMsg)
+	checkErr(err)
+	stmt.Close()
+	fmt.Printf("%s\n", fullMsg)
+}
+
+func (db DB) Write(p []byte) (n int, err error) {
+	var msg = string(p)
+	db.SaveMessage(msg)
+	return len(msg), nil
 }
 
 func (db DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, int) {
 	qStr := "SELECT oid, date, content, highlighted FROM diary WHERE date >= '" + startDate + "' and date <= '" + endDate + "' ORDER BY date ASC"
 	//fmt.Println(qStr)
-	rows, err := db.Conn.Query(qStr)
+	rows, err := db.conn.Query(qStr)
 	checkErr(err)
 	var (
-		diary Diary
+		diary   Diary
 		diaries []Diary
 	)
 	count := 0
@@ -57,24 +77,24 @@ func (db DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, i
 
 func (db DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Transaction, int) {
 	qStr := "SELECT * FROM vTransaction WHERE date >= '" + startDate + "' and date <= '" + endDate + "' ORDER BY date ASC"
-		rows, err := db.Conn.Query(qStr)
+	rows, err := db.conn.Query(qStr)
+	checkErr(err)
+	var (
+		transaction  Transaction
+		transactions []Transaction
+	)
+	count := 0
+	for rows.Next() {
+		var date, amount string
+		err = rows.Scan(&transaction.Oid, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
 		checkErr(err)
-		var (
-			transaction Transaction
-			transactions []Transaction
-		)
-		count := 0
-		for rows.Next() {
-			var date, amount string
-			err = rows.Scan(&transaction.Oid, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
-			checkErr(err)
-			t, _ := time.Parse(time.RFC3339, date)
-			transaction.Date = t.Format(dateFormatShort)
-			transaction.Amount, _ = decimal.NewFromString(amount)
-			transactions = append(transactions, transaction)
-			count++
-		}
-		return transactions, count
+		t, _ := time.Parse(time.RFC3339, date)
+		transaction.Date = t.Format(dateFormatShort)
+		transaction.Amount, _ = decimal.NewFromString(amount)
+		transactions = append(transactions, transaction)
+		count++
+	}
+	return transactions, count
 }
 
 type Diary struct {
@@ -86,38 +106,38 @@ type Diary struct {
 	Updated     int
 }
 
-func (diary Diary) Save() {
+func (db DB) SaveDiary(diary Diary) {
 	if diary.Oid > 0 {
 		// Update
-		stmt, err := db.Conn.Prepare("UPDATE diary set content = ?, highlighted = ?, updated = strftime('%s', 'now') WHERE oid = ? and date = ?")
+		stmt, err := db.conn.Prepare("UPDATE diary set content = ?, highlighted = ?, updated = strftime('%s', 'now') WHERE oid = ? and date = ?")
 		checkErr(err)
 		_, err = stmt.Exec(diary.Content, diary.Highlighted, diary.Oid, diary.Date)
 		checkErr(err)
 		stmt.Close()
-		SaveMessage(fmt.Sprintf("Diary %d updated.", diary.Oid))
+		db.SaveMessage(fmt.Sprintf("Diary %d updated.", diary.Oid))
 	} else {
 		// INSERT
-		stmt, err := db.Conn.Prepare("INSERT INTO diary(date, content, highlighted) VALUES(?,?,?)")
+		stmt, err := db.conn.Prepare("INSERT INTO diary(date, content, highlighted) VALUES(?,?,?)")
 		checkErr(err)
 		res, err := stmt.Exec(diary.Date, diary.Content, diary.Highlighted)
 		checkErr(err)
 		id, err := res.LastInsertId()
 		checkErr(err)
 		stmt.Close()
-		SaveMessage(fmt.Sprintf("New diary %d saved to database.", id))
+		db.SaveMessage(fmt.Sprintf("New diary %d saved to database.", id))
 	}
 }
 
-func GetDiary(diary *Diary) {
+func(db DB) GetDiary(diary *Diary) {
 	var date string
 	//fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Oid)
-	rows, err := db.Conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
+	rows, err := db.conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
 	checkErr(err)
 	for rows.Next() {
 		err = rows.Scan(&date, &diary.Content, &diary.Highlighted)
 	}
 	t, _ := time.Parse(time.RFC3339, date)
-	diary.Date = t.Format("2006-01-02")
+	diary.Date = t.Format(dateFormatShort)
 	checkErr(err)
 	rows.Close()
 }
@@ -141,17 +161,17 @@ type Transaction struct {
 	Updated        int
 }
 
-func (transaction Transaction) Save() {
+func (db DB) SaveTransaction(transaction Transaction) {
 	if transaction.Oid == 0 {
 		// INSERT
-		stmt, err := db.Conn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
+		stmt, err := db.conn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
 		checkErr(err)
 		res, err := stmt.Exec(transaction.Date, transaction.Item, transaction.Description, transaction.Currency, transaction.Amount, transaction.Pay, transaction.Income, transaction.Payment, transaction.Bank)
 		checkErr(err)
 		id, err := res.LastInsertId()
 		checkErr(err)
 		stmt.Close()
-		SaveMessage(fmt.Sprintf("New transaction %d saved to database.", id))
+		db.SaveMessage(fmt.Sprintf("New transaction %d saved to database.", id))
 	}
 	// ToDo: Update
 }
@@ -163,8 +183,8 @@ type Currency struct {
 	Current bool
 }
 
-func GetCurrencies() []Currency {
-	rows, err := db.Conn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0")
+func (db DB) GetCurrencies() []Currency {
+	rows, err := db.conn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0")
 	checkErr(err)
 	var currencies []Currency
 	for rows.Next() {
@@ -184,8 +204,8 @@ type Payment struct {
 	Priority bool
 }
 
-func GetPayments() []Payment {
-	rows, err := db.Conn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0")
+func (db DB) GetPayments() []Payment {
+	rows, err := db.conn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0")
 	checkErr(err)
 	var payments []Payment
 	for rows.Next() {
@@ -205,8 +225,8 @@ type Bank struct {
 	Priority bool
 }
 
-func GetBanks() []Bank {
-	rows, err := db.Conn.Query("SELECT id, name, description, priority from bank WHERE active")
+func (db DB) GetBanks() []Bank {
+	rows, err := db.conn.Query("SELECT id, name, description, priority from bank WHERE active")
 	checkErr(err)
 	var banks []Bank
 	for rows.Next() {
@@ -217,21 +237,4 @@ func GetBanks() []Bank {
 	}
 	rows.Close()
 	return banks
-}
-
-func SaveMessage(msg string) {
-	now := time.Now()
-	fullMsg := fmt.Sprintf("%s: %s", now.Format(time.UnixDate), msg)
-	stmt, err := db.Conn.Prepare("INSERT INTO message(added, content) VALUES(strftime('%s', 'now') ,?)")
-	checkErr(err)
-	_, err = stmt.Exec(fullMsg)
-	checkErr(err)
-	stmt.Close()
-	fmt.Printf("%s\n", fullMsg)
-}
-
-func checkErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }

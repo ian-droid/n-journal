@@ -27,10 +27,10 @@ var (
 )
 
 type DiaryForm struct {
-	JournalDB       *journal.DB
+	JournalDB    *journal.DB
 	Mode         string
 	Message      string
-	Diaries        []journal.Diary
+	Diaries      []journal.Diary
 	Diary2Update journal.Diary
 	StartDate    string
 	EndDate      string
@@ -70,16 +70,16 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 		} else {
 			nd.Highlighted = false
 		}
-		nd.Save()
+		diaryForm.JournalDB.SaveDiary(nd)
 		diaryForm.Message = "Diary of " + strings.Join(r.Form["date"], "") + " saved."
 	}
 	if oid, ok := r.Form["Edit"]; r.Method == "GET" && ok {
 		diaryForm.Mode = "Update"
 		fmt.Sscanf(strings.Join(oid, ""), "%d", &diaryForm.Diary2Update.Oid)
-		journal.GetDiary(&diaryForm.Diary2Update)
+		diaryForm.JournalDB.GetDiary(&diaryForm.Diary2Update)
 	}
 
-	diaryForm.Diaries, diaryForm.RowCount = diaryForm.JournalDB.GetDiariesByDateRange(diaryForm.StartDate,diaryForm.EndDate)
+	diaryForm.Diaries, diaryForm.RowCount = diaryForm.JournalDB.GetDiariesByDateRange(diaryForm.StartDate, diaryForm.EndDate)
 
 	tmpl := template.Must(template.ParseFiles("diary.gtpl"))
 	tmpl.Execute(w, diaryForm)
@@ -88,16 +88,16 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 }
 
 type TransactionForm struct {
-	JournalDB      *journal.DB
-	Mode        string
+	JournalDB    *journal.DB
+	Mode         string
 	Transactions []journal.Transaction
-	Currency    []journal.Currency
-	Payment     []journal.Payment
-	Bank        []journal.Bank
-	StartDate   string
-	EndDate     string
-	DayCount    int
-	RowCount    int
+	Currency     []journal.Currency
+	Payment      []journal.Payment
+	Bank         []journal.Bank
+	StartDate    string
+	EndDate      string
+	DayCount     int
+	RowCount     int
 }
 
 func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Request) {
@@ -143,14 +143,14 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 		fmt.Sscanf(strings.Join(r.Form["payment"], ""), "%d", &nt.Payment)
 		fmt.Sscanf(strings.Join(r.Form["bank"], ""), "%d", &nt.Bank)
 
-		nt.Save()
+		transactionForm.JournalDB.SaveTransaction(nt)
 	}
 
-	transactionForm.Transactions, transactionForm.RowCount = transactionForm.JournalDB.GetTransactionsByDateRange(transactionForm.StartDate,transactionForm.EndDate)
+	transactionForm.Transactions, transactionForm.RowCount = transactionForm.JournalDB.GetTransactionsByDateRange(transactionForm.StartDate, transactionForm.EndDate)
 
-	transactionForm.Currency = journal.GetCurrencies()
-	transactionForm.Payment = journal.GetPayments()
-	transactionForm.Bank = journal.GetBanks()
+	transactionForm.Currency = transactionForm.JournalDB.GetCurrencies()
+	transactionForm.Payment = transactionForm.JournalDB.GetPayments()
+	transactionForm.Bank = transactionForm.JournalDB.GetBanks()
 
 	tmpl := template.Must(template.ParseFiles("transaction.gtpl"))
 	tmpl.Execute(w, transactionForm)
@@ -177,7 +177,11 @@ func main() {
 	flag.Parse()
 	var addrStr = *svrAddress + ":" + *svrPort
 
-	jdb := journal.OpenDB(*dbFile)
+	jdb := &journal.DB{
+		DBType: "sqlite3",
+		DSN:*dbFile,
+		}
+	jdb.Open()
 	diaryForm := DiaryForm{JournalDB: jdb}
 	transactionForm := TransactionForm{JournalDB: jdb}
 
@@ -211,7 +215,7 @@ func main() {
 		TLSConfig: tlsConfig,
 	}
 
-	journal.SaveMessage(fmt.Sprintf("Serving requests on https://%s/.", addrStr))
+	jdb.SaveMessage(fmt.Sprintf("Serving requests on https://%s/.", addrStr))
 	server.ListenAndServeTLS(*serverCertFile, *serverKeyFile)
 
 }
