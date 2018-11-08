@@ -179,8 +179,8 @@ func main() {
 
 	jdb := &journal.DB{
 		DBType: "sqlite3",
-		DSN:*dbFile,
-		}
+		DSN:    *dbFile,
+	}
 	jdb.Open()
 	diaryForm := DiaryForm{JournalDB: jdb}
 	transactionForm := TransactionForm{JournalDB: jdb}

@@ -19,24 +19,24 @@ func checkErr(err error) {
 
 type DB struct {
 	DBType string
-	DSN  string
-	conn *sql.DB //dbconn in use
+	DSN    string
+	conn   *sql.DB //dbconn in use
 }
 
-func (db *DB)Open() {
+func (db *DB) Open() {
 	var err error
 	db.conn, err = sql.Open(db.DBType, db.DSN)
 	checkErr(err)
-	db.SaveMessage(fmt.Sprintf("%s dateabase '%s' opened for journaling.",db.DBType, db.DSN))
+	db.SaveMessage(fmt.Sprintf("%s dateabase '%s' opened for journaling.", db.DBType, db.DSN))
 }
 
-func  (db DB) CloseDB() {
+func (db *DB) CloseDB() {
 	db.SaveMessage("Closing dateabase .")
 	err := db.conn.Close()
 	checkErr(err)
 }
 
-func  (db DB) SaveMessage(msg string) {
+func (db *DB) SaveMessage(msg string) {
 	now := time.Now()
 	fullMsg := fmt.Sprintf("%s: %s", now.Format(time.UnixDate), msg)
 	stmt, err := db.conn.Prepare("INSERT INTO message(added, content) VALUES(strftime('%s', 'now') ,?)")
@@ -47,13 +47,13 @@ func  (db DB) SaveMessage(msg string) {
 	fmt.Printf("%s\n", fullMsg)
 }
 
-func (db DB) Write(p []byte) (n int, err error) {
+func (db *DB) Write(p []byte) (n int, err error) {
 	var msg = string(p)
 	db.SaveMessage(msg)
 	return len(msg), nil
 }
 
-func (db DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, int) {
+func (db *DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, int) {
 	qStr := "SELECT oid, date, content, highlighted FROM diary WHERE date >= '" + startDate + "' and date <= '" + endDate + "' ORDER BY date ASC"
 	//fmt.Println(qStr)
 	rows, err := db.conn.Query(qStr)
@@ -75,7 +75,7 @@ func (db DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, i
 	return diaries, count
 }
 
-func (db DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Transaction, int) {
+func (db *DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Transaction, int) {
 	qStr := "SELECT * FROM vTransaction WHERE date >= '" + startDate + "' and date <= '" + endDate + "' ORDER BY date ASC"
 	rows, err := db.conn.Query(qStr)
 	checkErr(err)
@@ -128,7 +128,7 @@ func (db DB) SaveDiary(diary Diary) {
 	}
 }
 
-func(db DB) GetDiary(diary *Diary) {
+func (db DB) GetDiary(diary *Diary) {
 	var date string
 	//fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Oid)
 	rows, err := db.conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
