@@ -106,7 +106,7 @@ type Diary struct {
 	Updated     int
 }
 
-func (db DB) SaveDiary(diary Diary) {
+func (db *DB) SaveDiary(diary Diary) {
 	if diary.Oid > 0 {
 		// Update
 		stmt, err := db.conn.Prepare("UPDATE diary set content = ?, highlighted = ?, updated = strftime('%s', 'now') WHERE oid = ? and date = ?")
@@ -128,7 +128,7 @@ func (db DB) SaveDiary(diary Diary) {
 	}
 }
 
-func (db DB) GetDiary(diary *Diary) {
+func (db *DB) GetDiary(diary *Diary) {
 	var date string
 	//fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Oid)
 	rows, err := db.conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
@@ -161,7 +161,7 @@ type Transaction struct {
 	Updated        int
 }
 
-func (db DB) SaveTransaction(transaction Transaction) {
+func (db *DB) SaveTransaction(transaction Transaction) {
 	if transaction.Oid == 0 {
 		// INSERT
 		stmt, err := db.conn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
@@ -183,7 +183,7 @@ type Currency struct {
 	Current bool
 }
 
-func (db DB) GetCurrencies() []Currency {
+func (db *DB) GetCurrencies() []Currency {
 	rows, err := db.conn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0")
 	checkErr(err)
 	var currencies []Currency
@@ -204,7 +204,7 @@ type Payment struct {
 	Priority bool
 }
 
-func (db DB) GetPayments() []Payment {
+func (db *DB) GetPayments() []Payment {
 	rows, err := db.conn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0")
 	checkErr(err)
 	var payments []Payment
@@ -225,7 +225,7 @@ type Bank struct {
 	Priority bool
 }
 
-func (db DB) GetBanks() []Bank {
+func (db *DB) GetBanks() []Bank {
 	rows, err := db.conn.Query("SELECT id, name, description, priority from bank WHERE active")
 	checkErr(err)
 	var banks []Bank
