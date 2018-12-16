@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ian-droid/n-journal/journal"
+	"github.com/ian-droid/njd/journal"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
