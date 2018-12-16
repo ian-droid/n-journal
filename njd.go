@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./journal"
+	"github.com/ian-droid/n-journal/journal"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -23,7 +23,7 @@ var (
 	serverKeyFile    = flag.String("key", "server.key", "TLS server key file.")
 	clientCaCertFile = flag.String("ca", "ca.crt", "TLS client CA cert file.")
 	svrAddress       = flag.String("address", "0.0.0.0", "Listening address, default: 0.0.0.0")
-	svrPort          = flag.String("port", "8086", "Listening port, default: 80.")
+	svrPort          = flag.String("port", "8086", "Listening port, default: 8086.")
 )
 
 type DiaryForm struct {
