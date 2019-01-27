@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/ian-droid/njd/journal"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/ian-droid/njd/journal"
 	"github.com/shopspring/decimal"
 	"html/template"
 	"io/ioutil"
@@ -24,6 +24,7 @@ var (
 	clientCaCertFile = flag.String("ca", "ca.crt", "TLS client CA cert file.")
 	svrAddress       = flag.String("address", "0.0.0.0", "Listening address, default: 0.0.0.0")
 	svrPort          = flag.String("port", "8086", "Listening port, default: 8086.")
+	docDir           = flag.String("docDir", ".", "Directory for document, including template and static directory.")
 )
 
 type DiaryForm struct {
@@ -81,7 +82,7 @@ func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
 
 	diaryForm.Diaries, diaryForm.RowCount = diaryForm.JournalDB.GetDiariesByDateRange(diaryForm.StartDate, diaryForm.EndDate)
 
-	tmpl := template.Must(template.ParseFiles("diary.gtpl"))
+	tmpl := template.Must(template.ParseFiles(*docDir + "diary.gtpl"))
 	tmpl.Execute(w, diaryForm)
 	diaryForm.Diary2Update = journal.Diary{}
 	diaryForm.Message = ""
@@ -152,7 +153,7 @@ func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Requ
 	transactionForm.Payment = transactionForm.JournalDB.GetPayments()
 	transactionForm.Bank = transactionForm.JournalDB.GetBanks()
 
-	tmpl := template.Must(template.ParseFiles("transaction.gtpl"))
+	tmpl := template.Must(template.ParseFiles(*docDir + "transaction.gtpl"))
 	tmpl.Execute(w, transactionForm)
 }
 
@@ -185,7 +186,7 @@ func main() {
 	diaryForm := DiaryForm{JournalDB: jdb}
 	transactionForm := TransactionForm{JournalDB: jdb}
 
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir(*docDir + "/static"))
 	http.Handle("/", fs)
 	http.HandleFunc("/diary", diaryForm.Form)
 	http.HandleFunc("/transaction", transactionForm.Form)
