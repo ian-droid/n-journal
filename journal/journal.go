@@ -98,7 +98,7 @@ func (db *DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Tr
 }
 
 type Diary struct {
-	Id         int
+	Id          int
 	Date        string
 	Content     string
 	Highlighted bool
@@ -147,7 +147,7 @@ func (db *DB) GetDiary(diary *Diary) {
 }
 
 type Transaction struct {
-	Id            int
+	Id             int
 	Date           string
 	Item           string
 	Description    string

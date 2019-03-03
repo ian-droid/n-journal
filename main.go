@@ -23,6 +23,7 @@ var (
 	clientCaCertFile = flag.String("ca", "ca.crt", "TLS client CA cert file.")
 	svrAddress       = flag.String("address", "0.0.0.0", "Listening address, default: 0.0.0.0")
 	svrPort          = flag.String("port", "8086", "Listening port, default: 8086.")
+	docDir           = flag.String("docDir", ".", "Directory for document, including template and static directory.")
 )
 
 type Diaries struct {
@@ -138,7 +139,7 @@ func main() {
 
 	rest := REST{JournalDB: jdb}
 
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir(*docDir + "/static"))
 	http.Handle("/", fs)
 	http.HandleFunc("/diary", rest.route)
 	http.HandleFunc("/transaction", rest.route)
