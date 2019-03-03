@@ -42,7 +42,6 @@ var diary = new Vue({
       .then(json => {
         if (diary.Id == 0) {
           diary.Id =json
-          diary.Updated = json
         }
         diary.Updated = json
       })

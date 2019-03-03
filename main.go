@@ -71,7 +71,7 @@ func (rest *REST) route(w http.ResponseWriter, r *http.Request) {
 		startDate = getDateByDays(-7)
 	}
 	if endDate = strings.Join(r.Form["e_date"], ""); endDate == "" {
-		endDate = getDateByDays(0)
+		endDate = getDateByDays(7)
 	}
 	dayCount = getDaysByDate(startDate, endDate)
 
