@@ -1,13 +1,12 @@
 package main
 
 import (
-	"github.com/ian-droid/njd/journal"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"html/template"
+	"github.com/ian-droid/njd/journal"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,134 +25,88 @@ var (
 	svrPort          = flag.String("port", "8086", "Listening port, default: 8086.")
 )
 
-type DiaryForm struct {
-	JournalDB    *journal.DB
-	Mode         string
-	Message      string
-	Diaries      []journal.Diary
-	Diary2Update journal.Diary
-	StartDate    string
-	EndDate      string
-	DayCount     int
-	RowCount     int
+type Diaries struct {
+	Code      int
+	Message   string
+	StartDate string
+	EndDate   string
+	DayCount  int
+	RowCount  int
+	List      []journal.Diary
 }
 
-func (diaryForm *DiaryForm) Form(w http.ResponseWriter, r *http.Request) {
-	diaryForm.Mode = "New"
+type Transactions struct {
+	Code      int
+	Message   string
+	StartDate string
+	EndDate   string
+	DayCount  int
+	RowCount  int
+	List      []journal.Transaction
+}
 
+type REST struct {
+	JournalDB *journal.DB
+}
+
+func (rest *REST) route(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
+	// fmt.Println("Method:", r.Method)
+	// fmt.Println("Path:", r.URL.Path)
+	// fmt.Println(r.Form)
+	//fmt.Fprintf(w, "REST request routed.")
 
-	if diaryForm.StartDate = strings.Join(r.Form["s_date"], ""); diaryForm.StartDate == "" {
-		diaryForm.StartDate = getDateByDays(-7)
+	var (
+		startDate, endDate string
+		dayCount           int
+	)
+	if startDate = strings.Join(r.Form["s_date"], ""); startDate == "" {
+		startDate = getDateByDays(-7)
 	}
-	if diaryForm.EndDate = strings.Join(r.Form["e_date"], ""); diaryForm.EndDate == "" {
-		diaryForm.EndDate = getDateByDays(0)
+	if endDate = strings.Join(r.Form["e_date"], ""); endDate == "" {
+		endDate = getDateByDays(0)
 	}
-	diaryForm.DayCount = getDaysByDate(diaryForm.StartDate, diaryForm.EndDate)
+	dayCount = getDaysByDate(startDate, endDate)
 
-	if r.Method == "POST" {
-		nd := journal.Diary{}
-
-		if oid, ok := r.Form["oid"]; ok {
-			fmt.Sscanf(strings.Join(oid, ""), "%d", &nd.Oid)
-			fmt.Printf("Update existing diary %d\n", nd.Oid)
-		} else {
-			nd.Oid = 0
+	switch r.URL.Path {
+	case "/diary":
+		switch r.Method {
+		case "GET":
+			rst := Diaries{
+				Code:      0,
+				StartDate: startDate,
+				EndDate:   endDate,
+				DayCount:  dayCount,
+			}
+			rst.List, rst.RowCount = rest.JournalDB.GetDiariesByDateRange(startDate, endDate)
+			j, err := json.Marshal(rst)
+			checkErr(err)
+			fmt.Fprintf(w, string(j))
+		case "POST":
+			decoder := json.NewDecoder(r.Body)
+			var diary journal.Diary
+			err := decoder.Decode(&diary)
+			checkErr(err)
+			rid := rest.JournalDB.SaveDiary(diary)
+			j, err := json.Marshal(rid)
+			checkErr(err)
+			fmt.Fprintf(w, string(j))
 		}
-		if nd.Date = strings.Join(r.Form["date"], ""); nd.Date == "" {
-			nd.Date = getDateByDays(0)
-			fmt.Println("Using system date for diary, please make sure TZ is correct.")
+	case "/transaction":
+		switch r.Method {
+		case "GET":
+			rst := Transactions{
+				Code:      0,
+				StartDate: startDate,
+				EndDate:   endDate,
+				DayCount:  dayCount,
+			}
+			rst.List, rst.RowCount = rest.JournalDB.GetTransactionsByDateRange(startDate, endDate)
+			j, err := json.Marshal(rst)
+			checkErr(err)
+			fmt.Fprintf(w, string(j))
 		}
-		nd.Content = strings.Join(r.Form["content"], "")
-		if strings.Join(r.Form["highlighted"], "") == "on" {
-			nd.Highlighted = true
-		} else {
-			nd.Highlighted = false
-		}
-		diaryForm.JournalDB.SaveDiary(nd)
-		diaryForm.Message = "Diary of " + strings.Join(r.Form["date"], "") + " saved."
 	}
-	if oid, ok := r.Form["Edit"]; r.Method == "GET" && ok {
-		diaryForm.Mode = "Update"
-		fmt.Sscanf(strings.Join(oid, ""), "%d", &diaryForm.Diary2Update.Oid)
-		diaryForm.JournalDB.GetDiary(&diaryForm.Diary2Update)
-	}
-
-	diaryForm.Diaries, diaryForm.RowCount = diaryForm.JournalDB.GetDiariesByDateRange(diaryForm.StartDate, diaryForm.EndDate)
-
-	tmpl := template.Must(template.ParseFiles("diary.gtpl"))
-	tmpl.Execute(w, diaryForm)
-	diaryForm.Diary2Update = journal.Diary{}
-	diaryForm.Message = ""
-}
-
-type TransactionForm struct {
-	JournalDB    *journal.DB
-	Mode         string
-	Transactions []journal.Transaction
-	Currency     []journal.Currency
-	Payment      []journal.Payment
-	Bank         []journal.Bank
-	StartDate    string
-	EndDate      string
-	DayCount     int
-	RowCount     int
-}
-
-func (transactionForm *TransactionForm) Form(w http.ResponseWriter, r *http.Request) {
-	transactionForm.Mode = "Insert"
-
-	r.ParseForm()
-
-	if transactionForm.StartDate = strings.Join(r.Form["s_date"], ""); transactionForm.StartDate == "" {
-		transactionForm.StartDate = getDateByDays(-7)
-	}
-	if transactionForm.EndDate = strings.Join(r.Form["e_date"], ""); transactionForm.EndDate == "" {
-		transactionForm.EndDate = getDateByDays(0)
-	}
-	transactionForm.DayCount = getDaysByDate(transactionForm.StartDate, transactionForm.EndDate)
-
-	if r.Method == "POST" {
-		nt := journal.Transaction{}
-
-		if oid, ok := r.Form["oid"]; ok {
-			fmt.Sscanf(strings.Join(oid, ""), "%d", &nt.Oid)
-			fmt.Println("Update existing transaction")
-		} else {
-			nt.Oid = 0
-		}
-		if nt.Date = strings.Join(r.Form["date"], ""); nt.Date == "" {
-			nt.Date = getDateByDays(0)
-			fmt.Println("Using system date for transaction, please make sure TZ is correct.")
-		}
-		nt.Item = strings.Join(r.Form["item"], "")
-		nt.Description = strings.Join(r.Form["description"], "")
-		fmt.Sscanf(strings.Join(r.Form["currency"], ""), "%d", &nt.Currency)
-
-		nt.Amount, _ = decimal.NewFromString(strings.Join(r.Form["amount"], ""))
-
-		if strings.Join(r.Form["direction"], "") == "pay" {
-			nt.Pay = true
-			nt.Income = false
-		} else {
-			nt.Pay = false
-			nt.Income = true
-		}
-
-		fmt.Sscanf(strings.Join(r.Form["payment"], ""), "%d", &nt.Payment)
-		fmt.Sscanf(strings.Join(r.Form["bank"], ""), "%d", &nt.Bank)
-
-		transactionForm.JournalDB.SaveTransaction(nt)
-	}
-
-	transactionForm.Transactions, transactionForm.RowCount = transactionForm.JournalDB.GetTransactionsByDateRange(transactionForm.StartDate, transactionForm.EndDate)
-
-	transactionForm.Currency = transactionForm.JournalDB.GetCurrencies()
-	transactionForm.Payment = transactionForm.JournalDB.GetPayments()
-	transactionForm.Bank = transactionForm.JournalDB.GetBanks()
-
-	tmpl := template.Must(template.ParseFiles("transaction.gtpl"))
-	tmpl.Execute(w, transactionForm)
 }
 
 func checkErr(err error) {
@@ -182,13 +135,13 @@ func main() {
 		DSN:    *dbFile,
 	}
 	jdb.Open()
-	diaryForm := DiaryForm{JournalDB: jdb}
-	transactionForm := TransactionForm{JournalDB: jdb}
+
+	rest := REST{JournalDB: jdb}
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
-	http.HandleFunc("/diary", diaryForm.Form)
-	http.HandleFunc("/transaction", transactionForm.Form)
+	http.HandleFunc("/diary", rest.route)
+	http.HandleFunc("/transaction", rest.route)
 
 	caCert, err := ioutil.ReadFile(*clientCaCertFile)
 	if err != nil {

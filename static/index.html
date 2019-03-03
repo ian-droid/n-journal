@@ -2,13 +2,83 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Network Journal System</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- development version, includes helpful console warnings -->
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
 </head>
 <body>
-  <div id="iframes">
-    <iframe src="transaction"></iframe>
-    <iframe src="diary"></iframe>
+
+  <h2>Recent Activities</h2>
+  <div id="diaryView">
+    <table v-if="diaries.RowCount > 0">
+      <tr>
+        <th class="date">Date</th><th>Content</th>
+      </tr>
+      <tr  v-for="diary in diaries.List"
+              v-bind:id="'diary-' + diary.Id"
+              v-bind:class="{ highlighted: diary.Highlighted, monday: isMonday(diary.Date), updated: isUpdated(diary.Updated) }">
+            <td  class="firstCol">
+              <div v-show="diary.Id !== 0">
+                <button  class= "submit" v-on:click="diary. Updated=-1">🖊️</button>
+                {{diary.Date}}
+              </div>
+              <div  v-show="diary.Id === 0">
+                <input type="date" name="date" v-model="diary.Date">
+                <button class= "submit" v-on:click="post(diary)">✉️</button>
+              </div>
+            </td>
+            <td>
+              <div v-show="diary.Updated >=0 && diary.Id !== 0">{{diary.Content}}</div>
+              <div v-show="diary.Updated<0 || diary.Id === 0">
+                <textarea name="content" v-model="diary.Content" v-on:blur= "post(diary)" ></textarea>
+                <label>Highlighted:</label><input type="checkbox" v-model="diary.Highlighted">
+                <button v-show="diary.Id === 0" class= "cancel" v-on:click="diaries.List.pop()">❌</button>
+              </div>
+            </td>
+      </tr>
+  </table>
+    <p v-if="diaries.Code === 0">{{diaries.RowCount}} records of {{diaries.DayCount}} days.</p>
+    <p v-else-if>{{diaries.Message}}</p>
+    <div>
+      <label>From:</label><input type="date" name="s_date" v-model="diaries.StartDate" v-on:change="refresh" />
+      <label>to:</label><input type="date" name="e_date" v-model="diaries.EndDate" v-on:change="refresh" />
+      <button v-on:click="append">Append</button>
+    </div>
   </div>
+
+  <h2>Recent Transactions</h2>
+  <div id="transaction">
+    <table v-if="transactions.RowCount > 0">
+      <tr>
+        <th class="date">Date</th><th>Item</th>
+        <th>Direction</th><th>Amount</th><th>Payment</th><th>Bank</th>
+        <th>Description</th>
+      </tr>
+        <tr v-for="transaction in transactions.List"
+                v-bind:id="'transaction-' + transaction.Id">
+          <td>{{transaction.Date}}</td>
+          <td>{{transaction.Item}}</td>
+          <td>{{transaction.Direction}}</td>
+          <td>{{transaction.CurrencyPrefix}}&nbsp;{{transaction.Amount}}</td>
+          <td>{{transaction.PaymentName}}</td>
+          <td>{{transaction.BankName}}</td>
+          <td>{{transaction.Description}}</td>
+        </tr>
+    </table>
+    <p v-if="transactions.Code === 0">{{transactions.RowCount}} records of {{transactions.DayCount}} days.</p>
+    <p v-else>{{transactions.Message}}</p>
+    <div>
+      <label>From:</label><input type="date" name="s_date" v-model="transactions.StartDate" v-on:change="refresh" />
+      <label>to:</label><input type="date" name="e_date" v-model="transactions.EndDate" v-on:change="refresh" />
+      <input type="button" value="Add" />
+    </div>
+  </div>
+
+<script src="nvr.js"></script>
 </body>
 </html>

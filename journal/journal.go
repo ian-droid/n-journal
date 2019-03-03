@@ -65,7 +65,7 @@ func (db *DB) GetDiariesByDateRange(startDate string, endDate string) ([]Diary, 
 	count := 0
 	for rows.Next() {
 		var date string
-		err = rows.Scan(&diary.Oid, &date, &diary.Content, &diary.Highlighted)
+		err = rows.Scan(&diary.Id, &date, &diary.Content, &diary.Highlighted)
 		checkErr(err)
 		t, _ := time.Parse(time.RFC3339, date)
 		diary.Date = t.Format(dateFormatShort)
@@ -86,7 +86,7 @@ func (db *DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Tr
 	count := 0
 	for rows.Next() {
 		var date, amount string
-		err = rows.Scan(&transaction.Oid, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
+		err = rows.Scan(&transaction.Id, &date, &transaction.Item, &transaction.Description, &transaction.Direction, &transaction.CurrencyPrefix, &amount, &transaction.PaymentName, &transaction.BankName)
 		checkErr(err)
 		t, _ := time.Parse(time.RFC3339, date)
 		transaction.Date = t.Format(dateFormatShort)
@@ -98,7 +98,7 @@ func (db *DB) GetTransactionsByDateRange(startDate string, endDate string) ([]Tr
 }
 
 type Diary struct {
-	Oid         int
+	Id         int
 	Date        string
 	Content     string
 	Highlighted bool
@@ -106,15 +106,18 @@ type Diary struct {
 	Updated     int
 }
 
-func (db *DB) SaveDiary(diary Diary) {
-	if diary.Oid > 0 {
+func (db *DB) SaveDiary(diary Diary) int64 {
+	if diary.Id > 0 {
 		// Update
 		stmt, err := db.conn.Prepare("UPDATE diary set content = ?, highlighted = ?, updated = strftime('%s', 'now') WHERE oid = ? and date = ?")
 		checkErr(err)
-		_, err = stmt.Exec(diary.Content, diary.Highlighted, diary.Oid, diary.Date)
+		_, err = stmt.Exec(diary.Content, diary.Highlighted, diary.Id, diary.Date)
 		checkErr(err)
 		stmt.Close()
-		db.SaveMessage(fmt.Sprintf("Diary %d updated.", diary.Oid))
+		t := time.Now()
+		e := t.Unix()
+		db.SaveMessage(fmt.Sprintf("Diary %d updated at epoch %d.", diary.Id, e))
+		return e
 	} else {
 		// INSERT
 		stmt, err := db.conn.Prepare("INSERT INTO diary(date, content, highlighted) VALUES(?,?,?)")
@@ -125,13 +128,14 @@ func (db *DB) SaveDiary(diary Diary) {
 		checkErr(err)
 		stmt.Close()
 		db.SaveMessage(fmt.Sprintf("New diary %d saved to database.", id))
+		return id
 	}
 }
 
 func (db *DB) GetDiary(diary *Diary) {
 	var date string
-	//fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Oid)
-	rows, err := db.conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Oid)
+	//fmt.Printf("SELECT date, content, highlighted FROM diary WHERE oid = %d \n", diary.Id)
+	rows, err := db.conn.Query("SELECT date, content, highlighted FROM diary WHERE oid = ?", diary.Id)
 	checkErr(err)
 	for rows.Next() {
 		err = rows.Scan(&date, &diary.Content, &diary.Highlighted)
@@ -143,7 +147,7 @@ func (db *DB) GetDiary(diary *Diary) {
 }
 
 type Transaction struct {
-	Oid            int
+	Id            int
 	Date           string
 	Item           string
 	Description    string
@@ -162,7 +166,7 @@ type Transaction struct {
 }
 
 func (db *DB) SaveTransaction(transaction Transaction) {
-	if transaction.Oid == 0 {
+	if transaction.Id == 0 {
 		// INSERT
 		stmt, err := db.conn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
 		checkErr(err)
