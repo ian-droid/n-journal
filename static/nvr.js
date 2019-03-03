@@ -23,9 +23,6 @@ var diary = new Vue({
     isMonday: function (str) {
       return new Date(str).getDay() === 0
     },
-    isUpdated: function (int){
-      return int > 0
-    },
     append: function (){
       this.diaries.List.push({
         Id: 0,
@@ -44,25 +41,35 @@ var diary = new Vue({
       .then(response => response.json())
       .then(json => {
         if (diary.Id == 0) {
-          dialy.Id == json
-        } else {
+          diary.Id =json
           diary.Updated = json
         }
+        diary.Updated = json
       })
   }
   }
 })
 
 var transaction = new Vue({
-  el: '#transaction',
+  el: '#transactionView',
   data: {
-    transactions: {}
+    transactions: {},
+    Currencies: {},
+    Banks: {},
+    Payments: {}
   },
   created () {
     fetch("/transaction")
     .then(response => response.json())
     .then(json => {
       this.transactions = json
+    })
+    fetch("/fininfo")
+    .then(response => response.json())
+    .then(json => {
+      this.Currencies = json.Currencies
+      this.Banks = json.Banks
+      this.Payments = json.Payments
     })
   },
   methods: {
@@ -72,6 +79,40 @@ var transaction = new Vue({
           .then(json => {
             this.transactions = json
           })
+    },
+    add: function (){
+      this.transactions.List.push({
+        Id: 0,
+        Direction: "Pay",
+        Currency: this.Currencies[0].Id,
+        Bank: this.Banks[0].Id,
+        Payment: this.Payments[0].Id
+      })
+    },
+    post: function (transaction) {
+      if (transaction.Direction === "Pay") {
+        transaction.Pay = true
+        transaction.Income = false
+      } else if (transaction.Direction === "Income") {
+        transaction.Pay = false
+        transaction.Income = true
+      }
+      transaction.CurrencyPrefix = this.Currencies.find(c => c.Id === transaction.Currency).Prefix
+      transaction.BankName = this.Banks.find(b => b.Id === transaction.Bank).Name
+      transaction.PaymentName = this.Payments.find(p => p.Id === transaction.Payment).Name
+      fetch("/transaction", {
+      method: "POST",
+      cache: "no-cache",
+      headers: {
+          "Content-Type": "application/json",
+      },
+      body: JSON.stringify(transaction),
+    })
+    .then(response => response.json())
+    .then(json => {
+      transaction.Id = json
+      transaction.Updated = json
+    })
     }
   }
 })

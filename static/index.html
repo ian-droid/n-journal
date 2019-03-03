@@ -21,23 +21,27 @@
       </tr>
       <tr  v-for="diary in diaries.List"
               v-bind:id="'diary-' + diary.Id"
-              v-bind:class="{ highlighted: diary.Highlighted, monday: isMonday(diary.Date), updated: isUpdated(diary.Updated) }">
+              v-bind:class="{ highlighted: diary.Highlighted, monday: isMonday(diary.Date), updated: diary.Updated>0 }">
             <td  class="firstCol">
               <div v-show="diary.Id !== 0">
                 <button  class= "submit" v-on:click="diary. Updated=-1">🖊️</button>
                 {{diary.Date}}
               </div>
               <div  v-show="diary.Id === 0">
-                <input type="date" name="date" v-model="diary.Date">
                 <button class= "submit" v-on:click="post(diary)">✉️</button>
+                <input type="date" name="date" v-model="diary.Date">
               </div>
             </td>
-            <td>
-              <div v-show="diary.Updated >=0 && diary.Id !== 0">{{diary.Content}}</div>
-              <div v-show="diary.Updated<0 || diary.Id === 0">
-                <textarea name="content" v-model="diary.Content" v-on:blur= "post(diary)" ></textarea>
+            <td  class="content">
+              <div v-show="diary.Id >0">{{diary.Content}}</div>
+              <div v-show="diary.Id === 0">
+                <textarea name="content" v-model="diary.Content" ></textarea>
                 <label>Highlighted:</label><input type="checkbox" v-model="diary.Highlighted">
                 <button v-show="diary.Id === 0" class= "cancel" v-on:click="diaries.List.pop()">❌</button>
+              </div>
+              <div v-show="diary.Updated<0">
+                <textarea name="content" v-model="diary.Content" v-on:blur= "post(diary)" ></textarea>
+                <label>Highlighted:</label><input type="checkbox" v-model="diary.Highlighted">
               </div>
             </td>
       </tr>
@@ -52,7 +56,7 @@
   </div>
 
   <h2>Recent Transactions</h2>
-  <div id="transaction">
+  <div id="transactionView">
     <table v-if="transactions.RowCount > 0">
       <tr>
         <th class="date">Date</th><th>Item</th>
@@ -60,14 +64,52 @@
         <th>Description</th>
       </tr>
         <tr v-for="transaction in transactions.List"
-                v-bind:id="'transaction-' + transaction.Id">
+              v-bind:id="'transaction-' + transaction.Id"
+              v-bind:class="{ updated: transaction.Updated>0 }"
+              v-if="transaction.Id !==0">
           <td>{{transaction.Date}}</td>
-          <td>{{transaction.Item}}</td>
+          <td class="content">{{transaction.Item}}</td>
           <td>{{transaction.Direction}}</td>
-          <td>{{transaction.CurrencyPrefix}}&nbsp;{{transaction.Amount}}</td>
+          <td class="content">{{transaction.CurrencyPrefix}} {{transaction.Amount}}</td>
           <td>{{transaction.PaymentName}}</td>
           <td>{{transaction.BankName}}</td>
-          <td>{{transaction.Description}}</td>
+          <td class="content">{{transaction.Description}}</td>
+        </tr>
+        <tr v-else>
+          <td><input type="date" v-model="transaction.Date"></td>
+          <td><input v-model="transaction.Item"></td>
+          <td>
+            <select v-model="transaction.Direction">
+              <option value="Pay">Pay</option>
+              <option value="Income">Income</option>
+            </select>
+          </td>
+          <td>
+            <select v-model="transaction.Currency">
+              <option v-for="currency in Currencies" v-bind:value="currency.Id">
+                {{ currency.Prefix }}
+              </option>
+            </select>
+            <input v-model="transaction.Amount"></td>
+          <td>
+            <select v-model="transaction.Payment">
+              <option v-for="payment in Payments" v-bind:value="payment.Id">
+                {{ payment.Name }}
+              </option>
+            </select>
+          </td>
+          <td>
+            <select v-model="transaction.Bank">
+              <option v-for="bank in Banks" v-bind:value="bank.Id">
+                {{ bank.Name }}
+              </option>
+            </select>
+          </td>
+          <td>
+            <input v-model="transaction.Description">
+            <button class= "submit" v-on:click="post(transaction)">💱</button>
+            <button class= "cancel" v-on:click="transactions.List.pop()">❌</button>
+          </td>
         </tr>
     </table>
     <p v-if="transactions.Code === 0">{{transactions.RowCount}} records of {{transactions.DayCount}} days.</p>
@@ -75,7 +117,7 @@
     <div>
       <label>From:</label><input type="date" name="s_date" v-model="transactions.StartDate" v-on:change="refresh" />
       <label>to:</label><input type="date" name="e_date" v-model="transactions.EndDate" v-on:change="refresh" />
-      <input type="button" value="Add" />
+      <button v-on:click="add">Add</bottom>
     </div>
   </div>
 

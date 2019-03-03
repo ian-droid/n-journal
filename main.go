@@ -46,6 +46,12 @@ type Transactions struct {
 	List      []journal.Transaction
 }
 
+type FinInfo struct {
+	Currencies []journal.Currency
+	Banks      []journal.Bank
+	Payments   []journal.Payment
+}
+
 type REST struct {
 	JournalDB *journal.DB
 }
@@ -106,6 +112,26 @@ func (rest *REST) route(w http.ResponseWriter, r *http.Request) {
 			j, err := json.Marshal(rst)
 			checkErr(err)
 			fmt.Fprintf(w, string(j))
+		case "POST":
+			decoder := json.NewDecoder(r.Body)
+			var transaction journal.Transaction
+			err := decoder.Decode(&transaction)
+			checkErr(err)
+			rid := rest.JournalDB.SaveTransaction(transaction)
+			j, err := json.Marshal(rid)
+			checkErr(err)
+			fmt.Fprintf(w, string(j))
+		}
+	case "/fininfo":
+		switch r.Method {
+		case "GET":
+			rst := FinInfo{}
+			rst.Currencies = rest.JournalDB.GetCurrencies()
+			rst.Banks = rest.JournalDB.GetBanks()
+			rst.Payments = rest.JournalDB.GetPayments()
+			j, err := json.Marshal(rst)
+			checkErr(err)
+			fmt.Fprintf(w, string(j))
 		}
 	}
 }
@@ -143,6 +169,7 @@ func main() {
 	http.Handle("/", fs)
 	http.HandleFunc("/diary", rest.route)
 	http.HandleFunc("/transaction", rest.route)
+	http.HandleFunc("/fininfo", rest.route)
 
 	caCert, err := ioutil.ReadFile(*clientCaCertFile)
 	if err != nil {

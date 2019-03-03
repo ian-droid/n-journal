@@ -165,7 +165,7 @@ type Transaction struct {
 	Updated        int
 }
 
-func (db *DB) SaveTransaction(transaction Transaction) {
+func (db *DB) SaveTransaction(transaction Transaction) int64 {
 	if transaction.Id == 0 {
 		// INSERT
 		stmt, err := db.conn.Prepare("INSERT INTO transactions (date, item, description, currency, amount, pay, income, payment, bank) VALUES(?,?,?,?,?,?,?,?,?)")
@@ -176,6 +176,9 @@ func (db *DB) SaveTransaction(transaction Transaction) {
 		checkErr(err)
 		stmt.Close()
 		db.SaveMessage(fmt.Sprintf("New transaction %d saved to database.", id))
+		return id
+	} else {
+		return 0
 	}
 	// ToDo: Update
 }
@@ -188,7 +191,7 @@ type Currency struct {
 }
 
 func (db *DB) GetCurrencies() []Currency {
-	rows, err := db.conn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0")
+	rows, err := db.conn.Query("SELECT id, name, prefix, current from currency WHERE id <> 0 ORDER BY current DESC")
 	checkErr(err)
 	var currencies []Currency
 	for rows.Next() {
@@ -209,7 +212,7 @@ type Payment struct {
 }
 
 func (db *DB) GetPayments() []Payment {
-	rows, err := db.conn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0")
+	rows, err := db.conn.Query("SELECT id, name, description, priority FROM payment WHERE id <> 0 ORDER BY priority DESC")
 	checkErr(err)
 	var payments []Payment
 	for rows.Next() {
@@ -230,7 +233,7 @@ type Bank struct {
 }
 
 func (db *DB) GetBanks() []Bank {
-	rows, err := db.conn.Query("SELECT id, name, description, priority from bank WHERE active")
+	rows, err := db.conn.Query("SELECT id, name, description, priority from bank WHERE active ORDER BY priority DESC")
 	checkErr(err)
 	var banks []Bank
 	for rows.Next() {
