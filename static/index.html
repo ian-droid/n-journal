@@ -52,7 +52,7 @@
     <div>
       <label>From:</label><input type="date" name="s_date" v-model="diaries.StartDate" v-on:change="refresh" />
       <label>to:</label><input type="date" name="e_date" v-model="diaries.EndDate" v-on:change="refresh" />
-      <button v-on:click="append">Append</button>
+      <p><button v-on:click="append">Append</button></p>
     </div>
   </div>
 
@@ -118,7 +118,7 @@
     <div>
       <label>From:</label><input type="date" name="s_date" v-model="transactions.StartDate" v-on:change="refresh" />
       <label>to:</label><input type="date" name="e_date" v-model="transactions.EndDate" v-on:change="refresh" />
-      <button v-on:click="add">Add</bottom>
+      <p><button v-on:click="add">Add</button></p>
     </div>
   </div>
 
